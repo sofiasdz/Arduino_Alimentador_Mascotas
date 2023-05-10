@@ -1,52 +1,56 @@
-
-
 #include "EasyBuzzer.h"
 #include <ESP32Servo.h>
+#include <virtuabotixRTC.h>
 
 //Buzzer
-unsigned int frequency = 1000;  
-unsigned int onDuration = 50;
-unsigned int offDuration = 100;
-unsigned int beeps = 2;
-unsigned int pauseDuration = 500;
-unsigned int cycles = 10;
+int buzzerPin = 16;
+const int CanalPWM = 1;
+
 
 //Servo
  Servo miServo;  // Creo un objeto servo para controlarlo
 int pos = 0;    // variable que guarda la posicion
+
+
+//Clock
+virtuabotixRTC myRTC(21, 22, 23);
 
 void done() {
 	Serial.print("Done!");
 }
 
 void setup() {
+  Serial.begin(115200);
   setupBuzzer();
   setupServo();
-
-
-    
+  setupClock();  
 }
 
-void foodDeployment(){
-  buzzerMakeSound();
-}
 
 void loop() {
-
+  updateClock();
   if (timeForFood()) {
-    buzzerMakeSound();
-    releaseFood();
+     releaseFood();
+     delay(500);
+     buzzerMakeSound();
+    
   }
-
 }
 
 boolean timeForFood(){
-  return true;
+  if(myRTC.seconds==15) {
+    return true;
+  }
+  else return false;
 }
 
 void buzzerMakeSound(){
-  	/* Always call this function in the loop for EasyBuzzer to work. */
-	EasyBuzzer.update();
+  ledcWriteNote(CanalPWM, NOTE_C, 4);
+  delay(500);
+  ledcWriteNote(CanalPWM, NOTE_D, 4);
+  delay(500);
+  // Silencio Buzzer
+  ledcWrite(CanalPWM,0);
 }
 
 void releaseFood(){
@@ -62,21 +66,39 @@ void releaseFood(){
 }
 
 void setupBuzzer(){
-	Serial.begin(115200);
-	/* Start a beeping sequence. */
-	EasyBuzzer.beep(
-		frequency,		// Frequency in hertz(HZ). 
-		onDuration, 	// On Duration in milliseconds(ms).
-		offDuration, 	// Off Duration in milliseconds(ms).
-		beeps, 			// The number of beeps per cycle.
-		pauseDuration, 	// Pause duration.
-		cycles, 		// The number of cycle.
-		done			// [Optional] Callback. A function to call when the sequence ends.
-	);
+  ledcAttachPin(buzzerPin, CanalPWM);
+    
+
 }
 
 void setupServo(){
- 
   miServo.attach(4);  // Defino en que pin va conectado el servo
   
+}
+
+void setupClock(){
+  Serial.begin(9600);
+  // segundos, minutos, horas, dia de la semana, numero de día, mes y año
+
+  myRTC.setDS1302Time(00, 39, 11, 03, 10, 05, 2023);
+}
+
+void updateClock(){
+    myRTC.updateTime();
+     // Se imprime el resultado en el Monitor Serial
+    Serial.print("Fecha y hora actual: ");
+    Serial.print(myRTC.dayofmonth); // Se puede cambiar entre día y mes si se utiliza el sistema Americano
+    Serial.print("/");
+    Serial.print(myRTC.month);
+    Serial.print("/");
+    Serial.print(myRTC.year);
+    Serial.print(" ");
+    Serial.print(myRTC.hours);
+    Serial.print(":");
+    Serial.print(myRTC.minutes);
+    Serial.print(":");
+    Serial.println(myRTC.seconds);
+
+  // Un pequeño delay para no repetir y leer más facil
+  delay(1000);
 }

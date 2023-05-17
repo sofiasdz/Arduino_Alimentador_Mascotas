@@ -1,82 +1,94 @@
-
-
 #include "EasyBuzzer.h"
-#include <ESP32Servo.h>
+#include <ESP32_Servo.h>
+#include <virtuabotixRTC.h>
+#include <Tone32.h>
+
 
 //Buzzer
-unsigned int frequency = 1000;  
-unsigned int onDuration = 50;
-unsigned int offDuration = 100;
-unsigned int beeps = 2;
-unsigned int pauseDuration = 500;
-unsigned int cycles = 10;
+int buzzerPin = 16;
+const int canalBuzzer = 1;
+
 
 //Servo
- Servo miServo;  // Creo un objeto servo para controlarlo
+Servo miServo;  // Creo un objeto servo para controlarlo
 int pos = 0;    // variable que guarda la posicion
+int servoPin = 4;
+const int canalServo = 0;
+
+
+//Clock
+virtuabotixRTC myRTC(21, 22, 23);
 
 void done() {
-	Serial.print("Done!");
+  Serial.print("Done!");
+}
+
+boolean timeForFood() {
+  return myRTC.seconds == 10 || myRTC.seconds == 20 || myRTC.seconds == 30 || myRTC.seconds == 40 || myRTC.seconds == 50 || myRTC.seconds == 60;
+}
+
+void buzzerMakeSound() {
+  digitalWrite(buzzerPin, HIGH);  // suena
+  delay(500);
+  digitalWrite(buzzerPin, LOW);  // no suena
+}
+
+void releaseFood() {
+  miServo.write(180);
+  delay(500);
+  miServo.write(0);
+}
+
+void setupBuzzer() {
+  pinMode(buzzerPin, OUTPUT);
+  //ledcAttachPin(buzzerPin, canalBuzzer);
+}
+
+void setupServo() {
+  pinMode(servoPin, OUTPUT);
+  miServo.attach(servoPin);  // Defino en que pin va conectado el servo
+}
+
+void setupClock() {
+  Serial.begin(9600);
+  // segundos, minutos, horas, dia de la semana, numero de día, mes y año
+  // myRTC.setDS1302Time(00, 39, 11, 03, 10, 05, 2023);
+}
+
+void updateClock() {
+  // Esta función actualiza las variables para obtener resultados actuales
+  myRTC.updateTime();
+
+  // Se imprime el resultado en el Monitor Serial
+  Serial.print("Fecha y hora actual: ");
+  Serial.print(myRTC.dayofmonth);  // Se puede cambiar entre día y mes si se utiliza el sistema Americano
+  Serial.print("/");
+  Serial.print(myRTC.month);
+  Serial.print("/");
+  Serial.print(myRTC.year);
+  Serial.print(" ");
+  Serial.print(myRTC.hours);
+  Serial.print(":");
+  Serial.print(myRTC.minutes);
+  Serial.print(":");
+  Serial.println(myRTC.seconds);
+
+  // Un pequeño delay para no repetir y leer más facil
+  delay(1000);
 }
 
 void setup() {
+  Serial.begin(9600);
   setupBuzzer();
   setupServo();
-
-
-    
-}
-
-void foodDeployment(){
-  buzzerMakeSound();
+  setupClock();
 }
 
 void loop() {
-
+  updateClock();
   if (timeForFood()) {
-    buzzerMakeSound();
     releaseFood();
+    delay(500);
+    buzzerMakeSound();
   }
-
-}
-
-boolean timeForFood(){
-  return true;
-}
-
-void buzzerMakeSound(){
-  	/* Always call this function in the loop for EasyBuzzer to work. */
-	EasyBuzzer.update();
-}
-
-void releaseFood(){
-  for (pos = 0; pos <= 180; pos += 1) { // va de 0 grados a 180 grados
-    // in steps of 1 degree
-    miServo.write(pos);              // indicar al servo que vaya a la posición en la variable 'pos'
-    delay(15);                       // espera 15 ms para que el servo alcance la posición
-  }
-  for (pos = 180; pos >= 0; pos -= 1) { // va de 180 grados a 0 grados
-    miServo.write(pos);              // indicar al servo que vaya a la posición en la variable 'pos'
-    delay(15);                       // espera 15 ms para que el servo alcance la posición
-  }
-}
-
-void setupBuzzer(){
-	Serial.begin(115200);
-	/* Start a beeping sequence. */
-	EasyBuzzer.beep(
-		frequency,		// Frequency in hertz(HZ). 
-		onDuration, 	// On Duration in milliseconds(ms).
-		offDuration, 	// Off Duration in milliseconds(ms).
-		beeps, 			// The number of beeps per cycle.
-		pauseDuration, 	// Pause duration.
-		cycles, 		// The number of cycle.
-		done			// [Optional] Callback. A function to call when the sequence ends.
-	);
-}
-
-void setupServo(){
- 
-  miServo.attach(4);  // Defino en que pin va conectado el servo
-  
 }

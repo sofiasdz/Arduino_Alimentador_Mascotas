@@ -1,66 +1,89 @@
-#include <ESP32_Servo.h>
-#include <virtuabotixRTC.h>
+#include "EasyBuzzer.h"
+#include <ESP32Servo.h>
+#include <Wire.h>
+#include <RTClib.h>
 
+//Buzzer
+int buzzerPin = 16;
+const int CanalPWM = 1;
 
-// Setup comedor
+//Servo
+Servo miServo;  // Creo un objeto servo para controlarlo
+int pos = 0;    // variable que guarda la posicion
+
+// SDA al 20 | SCL al 21 |VCC 3.3 o 5V
+// Declaramos un RTC DS3231
+RTC_DS3231 rtc;
+
 
 void setup() {
   Serial.begin(9600);
   setupBuzzer();
   setupServo();
-  setupClock();
+  setupClock();  
 }
 
-// Servo
-int buzzerPin = 16;
-const int canalBuzzer = 1;
-void setupBuzzer() {
-  pinMode(buzzerPin, OUTPUT);
-}
-
-// Buzzer
-Servo miServo;  // Creo un objeto servo para controlarlo
-int pos = 0;    // variable que guarda la posicion
-int servoPin = 4;
-const int canalServo = 0;
-
-void setupServo() {
-  pinMode(servoPin, OUTPUT);
-  miServo.attach(servoPin); 
-}
-
-virtuabotixRTC myRTC(21, 22, 23);
-
-void setupClock() {
-  Serial.begin(9600);
-  // myRTC.setDS1302Time(00, 39, 11, 03, 10, 05, 2023);
-}
-
-boolean timeForFood() {
-  return myRTC.seconds == 10 || myRTC.seconds == 20 || myRTC.seconds == 30 || myRTC.seconds == 40 || myRTC.seconds == 50 || myRTC.seconds == 60;
-}
-
-void buzzerMakeSound() {
-  digitalWrite(buzzerPin, HIGH);
-  delay(500);
-  digitalWrite(buzzerPin, LOW);
-}
-
-void releaseFood() {
-  miServo.write(180);
-  delay(500);
-  miServo.write(0);
-}
-
-void loopClock() {
-  myRTC.updateTime();
-}
-
-void loop() {
-  loopClock();
+void loop(){
+  updateClock();
   if (timeForFood()) {
-    releaseFood();
-    delay(500);
-    buzzerMakeSound();
+     releaseFood();
+     delay(500);
+     buzzerMakeSound();  
+  }
+}
+
+void updateClock(){
+  DateTime now = rtc.now();
+  Serial.print(now.day());
+  Serial.print('/');
+  Serial.print(now.month());
+  Serial.print('/');
+  Serial.print(now.year());
+  Serial.print(" ");
+  Serial.print(now.hour());
+  Serial.print(':');
+  Serial.print(now.minute());
+  Serial.print(':');
+  Serial.print(now.second());
+  Serial.println();
+  delay(1000);
+
+}
+
+boolean timeForFood(){
+  DateTime now = rtc.now();
+  if(now.second()==15) {
+    return true;
+  }
+  else return false;
+}
+
+void buzzerMakeSound(){
+  ledcWriteNote(CanalPWM, NOTE_C, 4);
+  delay(500);
+  ledcWriteNote(CanalPWM, NOTE_D, 4);
+  delay(500);
+  // Silencio Buzzer
+  ledcWrite(CanalPWM,0);
+}
+
+void releaseFood(){
+    miServo.write(100);
+    delay(2000);
+    miServo.write(260); 
+}
+
+void setupBuzzer(){
+  ledcAttachPin(buzzerPin, CanalPWM);
+}
+
+void setupServo(){
+  miServo.attach(4);  // Defino en que pin va conectado el servo
+}
+
+void setupClock(){
+  if (! rtc.begin()) {
+    Serial.println("No hay un módulo RTC");
+    while (1);
   }
 }
